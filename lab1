@@ -1,0 +1,44 @@
+from bs4 import BeautifulSoup
+from json import dump
+import requests
+
+BASE_URL = 'https://lnam.edu.ua/'
+URL = f"{BASE_URL}uk/faculty.html"
+result = requests.get(URL)
+university = BeautifulSoup(result.content, "html.parser")
+faculties = []
+fac_list = university.find(class_='mod_article')
+
+
+for faculty in fac_list.find_all(class_='faculty'):
+    faculty_name = faculty.figure.a['original-title']
+    faculty_url = faculty.figure.a['href']
+    faculty = {
+        "name": faculty_name,
+        "url": faculty_url,
+        "departments": []
+    }
+
+    for department_item in faculty["departments"]:
+        department_url = department_item["url"]
+        department_name = department_item["name"]
+        department_res = requests.get(department_url)
+        department_page = BeautifulSoup(department_res.content, "html.parser")
+        staff_link = BASE_URL + department_page.find('a')['href']
+        staff_res = requests.get(staff_link)
+        staff_page = BeautifulSoup(staff_res.content, "html.parser")
+        department = {
+            "name": department_name,
+            "url": department_url,
+            "staff": []
+        }
+    for teacher in staff_page.find_all('h4'):
+        department["staff"].append(teacher.a.getText())
+    department_item["departments"].append(department)
+
+
+
+
+with open("lnam.json", "w", encoding="utf-8") as json_file:
+    dump(faculties, json_file, ensure_ascii=False, indent=4)
+        
